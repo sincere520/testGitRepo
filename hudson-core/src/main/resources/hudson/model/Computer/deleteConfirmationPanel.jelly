@@ -1,0 +1,112 @@
+<!--
+The MIT License
+
+Copyright (c) 2004-2011, Oracle Corporation, Nikita Levyankov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-->
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+    <script type="text/javascript">
+        function deletingSlave() {
+            var type = jQuery(".radioButtons input:radio:checked").val();
+            if (type != undefined) {
+                var array = new Array();
+                array[0] = "${%Stopping all jobs. Deleting slave...}";
+                jQuery("#deleteMsg").html(array[type]);
+                onLinkClick("deleteMsg");
+                setTimeout(function() {
+                    jQuery.unblockUI({
+                        onUnblock: function() {
+                            window.location.href="..";
+                        }
+                    });
+                }, 2000);
+            } else {
+                window.location.href="..";
+            }
+        }
+
+        function submitDeleteForm() {
+            var dataString = jQuery("#deleteForm").serialize();
+            jQuery.ajax({
+                type: 'POST',
+                url: "${rootURL}/${it.url}deleteWithParam",
+                data: dataString,
+                success: deletingSlave,
+                dataType: "html"
+            });
+        }
+
+        function onDeleteClick() {
+            jQuery.ajax({
+                url: "${rootURL}/${it.url}api/json",
+                dataType: 'json',
+                success: function(data) {
+                    jQuery('#slaveStatus').hide();
+                    if (data.idle == false) {
+                        jQuery("#stopMode").attr("checked", "checked");
+                        var runningJobs = data.runningJobs;
+                        var jobList = jQuery("#jobList");
+                        jobList.html("");
+                        for (var i = 0; i &lt; runningJobs.length; i++) {
+                            jobList.append("<li>" + runningJobs[i].name + "</li>");
+                        }
+                        jQuery('#slaveStatus').show();
+                    }
+                }
+            })
+            onLinkClick("question");
+        }
+
+        jQuery(document).ready(function() {
+            jQuery('#confirm').unbind('click').click(function() {
+                 submitDeleteForm();
+            });
+
+            jQuery('#cancel').click(function() {
+                jQuery.unblockUI();
+                return false;
+            });
+        });
+    </script>
+
+    <div>
+        <form id="deleteForm">
+           <h4>${%Are you sure about deleting the slave?}</h4>
+           <div id="slaveStatus" class="deleteSlaveDialog" style="display:none">
+               <h4>${%Note: following jobs are running on this slave:}</h4>
+               <ul id="jobList">
+               </ul>
+               <div class="radioButtons">
+                   <input id="stopMode" type="radio" value="0" name="deleteMode">${%Force stop the jobs}</input>
+               </div>
+           </div>
+            <div>
+               <input type="button" id="confirm" value="${%Confirm}" />
+               <input type="button" id="cancel" value="${%Cancel}" />
+           </div>
+        </form>
+    </div>
+
+    <div id="deleteMsg" style="display:none">
+    </div>
+</j:jelly>
+
+
